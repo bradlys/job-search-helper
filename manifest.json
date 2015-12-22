@@ -1,0 +1,18 @@
+{
+	"manifest_version": 2,
+	"name": "Bradly's Crunchbase Job Search Helper",
+	"version": "0.0.0.1",
+	"description": "Search for jobs easily",
+	"homepage_url": "http://bradly.me/",
+	"permissions": ["http://*.crunchbase.com/*", "https://*.crunchbase.com/*"],
+	"content_security_policy": "default-src 'self' ",
+	"content_scripts": [
+		{
+			"matches": ["https://*.crunchbase.com/search*", "http://*.crunchbase.com/search*"],
+			"js": ["bradlys-crunchbase-search-helper-injector.js"],
+            "run_at": "document_end",
+            "all_frames": true
+		}
+	],
+    "web_accessible_resources": ["bradlys-crunchbase-search-helper.js"]
+}
