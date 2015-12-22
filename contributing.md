@@ -16,4 +16,4 @@ Thank you for your improvements, criticisms, and suggestions! Anything to push f
 
 ## Needs
 
-Not a whole lot right now! Currently in the early early stages of this all and I\'m looking forward to trying to add more as time goes on. Having more hands help right now might actually be a drawback and add to confusion and the fast development cycle I\'m trying right now. Suggestions are welcome though. Thanks!
+Not a whole lot right now! Currently in the early early stages of this all and I'm looking forward to trying to add more as time goes on. Having more hands help right now might actually be a drawback and add to confusion and the fast development cycle I'm trying right now. Suggestions are welcome though. Thanks!
