@@ -40,13 +40,16 @@ var resultColors = {
 };
 var todaysDate = new Date();
 
+var SIXMONTHS = 180*1000*60*60*24;
+var DAYS_45 = 45*60*60*24*1000;
+
 function bradlysCrunchbaseSearch() {
     if (bradlysTrack.finished === true || !CB.AdvancedSearch.hasSearch()) {
         return;
     }
     var el = CB.responsive.el;
     var $window = $(window);
-    var $documentHeight = el.$documentHeight();
+    var $documentHeight = el.$documentHeight() > 200 ? el.$documentHeight() - 50 : el.$documentHeight();
     if ((($window.scrollTop() + $window.outerHeight()) >= $documentHeight) && (bradlysTrack.requestMade === false)) {
         var cont = $('.results.container');
         cont.append(bradlysTrack.loader);
@@ -56,25 +59,12 @@ function bradlysCrunchbaseSearch() {
             var data = callback.hits;
             var place = $('.results ul');
             $(data).each(function (i) {
-                var colors = [];
-                var companyName = data[i].name;
-                appliedRecently(companyName) ? colors.push(resultColors.appliedRecently) : '';
-                appliedLongAgo(companyName) ? colors.push(resultColors.appliedLongAgo) : '';
-                visitedRecently(companyName) ? colors.push(resultColors.visitedRecently) : '';
                 //var vR = visitedRecently(data[i]);
                 //var un = isUninterested(data[i]);
                 var temp = CB.Autocomplete.template(data[i]).trim();
-                var style = '';
-                if (colors.length === 1) {
-                    style = ' style="background-color: ' + colors[0] + ';"';
-                } else if (colors.length > 1) {
-                    style = ' style="background: linear-gradient(to right';
-                    for (var i in colors) {
-                        style += ', ' + colors[i];
-                    }
-                    style += ');"';
-                }
-                var wrap = '<li' + ( (colors.length > 0) ? style : "" ) +
+                var companyName = data[i].name;
+                var style = getStyleForCompany(companyName);
+                var wrap = '<li' + (style.length > 0 ? (' style="' + style + '"') : '') +
                     ' onclick="addToVisited(\'' + companyName + '\');"' +
                     ">" + temp + '</li>';
                 result.push(wrap);
@@ -88,6 +78,24 @@ function bradlysCrunchbaseSearch() {
 }
 
 var visited = {};
+
+function getStyleForCompany(name) {
+    var colors = [];
+    appliedRecently(name) ? colors.push(resultColors.appliedRecently) : '';
+    appliedLongAgo(name) ? colors.push(resultColors.appliedLongAgo) : '';
+    visitedRecently(name) ? colors.push(resultColors.visitedRecently) : '';
+    var style = '';
+    if (colors.length === 1) {
+        style = 'background-color: ' + colors[0] + ';"';
+    } else if (colors.length > 1) {
+        style = 'background: linear-gradient(to right';
+        for (var i in colors) {
+            style += ', ' + colors[i];
+        }
+        style += ');"';
+    }
+    return style;
+}
 
 function addToVisited(name) {
     var company = name;
@@ -105,7 +113,7 @@ function appliedRecently(name) {
     var lowerCaseName = name.toLowerCase();
     if (lowerCaseName in bradlysCompanies) {
         if ('lastApplied' in bradlysCompanies[lowerCaseName] &&
-            todaysDate - bradlysCompanies[lowerCaseName].lastApplied < 180*1000*60*60*24) {
+            todaysDate - bradlysCompanies[lowerCaseName].lastApplied < SIXMONTHS) {
             return true;
         }
     }
@@ -119,7 +127,7 @@ function appliedLongAgo(name) {
     var lowerCaseName = name.toLowerCase();
     if (lowerCaseName in bradlysCompanies) {
         if ('lastApplied' in bradlysCompanies[lowerCaseName] &&
-            todaysDate - bradlysCompanies[lowerCaseName].lastApplied >= 180*1000*60*60*24) {
+            todaysDate - bradlysCompanies[lowerCaseName].lastApplied >= SIXMONTHS) {
             return true;
         }
     }
@@ -132,7 +140,7 @@ function visitedRecently(name) {
     }
     name = name.toLowerCase();
     if (name in bradlysCompanies) {
-        if ('lastVisited' in bradlysCompanies[name] && (todaysDate - bradlysCompanies[name].lastVisited) < 45*60*60*24*1000) {
+        if ('lastVisited' in bradlysCompanies[name] && (todaysDate - bradlysCompanies[name].lastVisited) < DAYS_45) {
             return true;
         }
         //return true;
@@ -186,6 +194,24 @@ function insertFileBox() {
         searchElement[0].parentNode.insertBefore(HTMLBoxElement, searchElement[0]);
     } else {
         console.log("Couldn't find search element. I guess CrunchBase updated their UI. Tell Bradly.");
+    }
+}
+
+function restyleExistingElements() {
+    var elements = document.getElementsByClassName('results container')[0];
+    elements = elements.getElementsByTagName('li');
+    for (var i = 0; i < elements.length; i++ ) {
+        var name = elements[i].querySelector('a').getAttribute('href');
+        if (name.indexOf('/organization/') !== -1){
+            name = name.substr(14);
+        }
+        if (name in bradlysCompanies) {
+            var style = getStyleForCompany(name);
+            if (style.length > 0) {
+                elements[i].setAttribute('style', style);
+            }
+            elements[i].setAttribute('onclick', 'addToVisited(\'' + name + '\');');
+        }
     }
 }
 
@@ -262,6 +288,11 @@ function parseFileIntoState(e) {
                 }
             }
             //visited companies sheet
+            worksheet = workbook.Sheets[workbook.SheetNames[1]];
+            companyColumn = 'A';
+            dateColumn = 'C';
+            companyRow = false;
+            dateRow = false;
             for (var j in worksheet) {
                 if (j === '!ref') {
                     continue;
@@ -304,6 +335,7 @@ function parseFileIntoState(e) {
                 }
             }
             replaceWindowScroll();
+            restyleExistingElements();
         };
         fileReader.readAsBinaryString(file);
     }
