@@ -1,4 +1,6 @@
 'use strict';
+
+//this is part of the crunchbase implementation. This is my copy of it. It tracks some state.
 var bradlysTrack = {
     lis: $('.results').find('li'),
     windowHeight: $(document).outerHeight(),
@@ -13,7 +15,10 @@ var bradlysTrack = {
     loader: '<div class="loader"><span class="loader-text"></span>Loading....</div>'
 };
 
-//Stores all the companies as keys and the values are the dates applied.
+//Stores all the companies as keys and the values are objects with 3 keys.
+// lastApplied with value of a date object
+// uninterested with value boolean
+// lastVisited with value of a date object
 var bradlysCompanies = {};
 //add a surrounding div with 'base' class to this.
 //This is the box used for adding a job spreadsheet file.
@@ -43,6 +48,13 @@ var todaysDate = new Date();
 var SIXMONTHS = 180*1000*60*60*24;
 var DAYS_45 = 45*60*60*24*1000;
 
+/**
+ * This is what is called upon scrolling. It will do a search if the state is setup correctly
+ * and then append the results of the search to the page. What is different about this one
+ * versus the crunchbase one is that this one stylizes the results as they are appended.
+ *
+ * @returns {boolean}
+ */
 function bradlysCrunchbaseSearch() {
     if (bradlysTrack.finished === true || !CB.AdvancedSearch.hasSearch()) {
         return;
@@ -79,6 +91,13 @@ function bradlysCrunchbaseSearch() {
 
 var visited = {};
 
+/**
+ * Returns $text where <li style="$text"></li> is the correct style text for the company.
+ * In the current case it styles the background or background-color.
+ *
+ * @param {string} name - company name
+ * @returns {string} style
+ */
 function getStyleForCompany(name) {
     var colors = [];
     appliedRecently(name) ? colors.push(resultColors.appliedRecently) : '';
@@ -97,6 +116,11 @@ function getStyleForCompany(name) {
     return style;
 }
 
+/**
+ * Adds the company to the visited tracker and updates the copy visited button.
+ *
+ * @param {string} name - company name
+ */
 function addToVisited(name) {
     var company = name;
     if (!(company in visited)) {
@@ -106,6 +130,12 @@ function addToVisited(name) {
     }
 }
 
+/**
+ * Has this company been applied to recently? Where recently is in the last six months.
+ *
+ * @param {string} name - company name
+ * @returns {boolean}
+ */
 function appliedRecently(name) {
     if (!name || name.length < 1){
         return false;
@@ -120,6 +150,12 @@ function appliedRecently(name) {
     return false;
 }
 
+/**
+ * Has this company been applied to long ago? Where long ago was at least six months ago.
+ *
+ * @param {string} name - company name
+ * @returns {boolean}
+ */
 function appliedLongAgo(name) {
     if (!name || name.length < 1){
         return false;
@@ -134,6 +170,12 @@ function appliedLongAgo(name) {
     return false;
 }
 
+/**
+ * Has this company been visited recently? Where recently is in the last 45 days.
+ *
+ * @param {string} name - company name
+ * @returns {boolean}
+ */
 function visitedRecently(name) {
     if (!name || name.length < 1){
         return false;
@@ -148,6 +190,11 @@ function visitedRecently(name) {
     return false;
 }
 
+/**
+ * Load all dependency scripts for the program. That is, scripts that we need to run
+ * this script. Dependency script src urls are stored in the scripts variable.
+ *
+ */
 function loadDependencyScripts() {
     for (var i in scripts) {
         var s = document.createElement('script');
@@ -159,6 +206,10 @@ function loadDependencyScripts() {
     }
 }
 
+/**
+ * Replace all window scrolling functions that exist with bradlysCrunchbaseSearch.
+ *
+ */
 function replaceWindowScroll() {
     $(window).scroll();
     $(window).unbind('scroll');
@@ -167,6 +218,10 @@ function replaceWindowScroll() {
     });
 }
 
+/**
+ * Insert the file box UI element into the page.
+ *
+ */
 function insertFileBox() {
     var searchElement = document.getElementsByClassName('base search');
     if(searchElement){
@@ -197,6 +252,12 @@ function insertFileBox() {
     }
 }
 
+/**
+ * Restyle any existing <li> elements in the search results based upon our existing state.
+ * This also adds the onclick addToVisited functionality. This is similar to as what it is done
+ * in bradlysCrunchbaseSearch when elements are appended but now we can do it for elements that already exist.
+ *
+ */
 function restyleExistingElements() {
     var elements = document.getElementsByClassName('results container')[0];
     elements = elements.getElementsByTagName('li');
@@ -215,6 +276,13 @@ function restyleExistingElements() {
     }
 }
 
+/**
+ * Take the file given from the file input element and parse it into state. After that's done,
+ * replace the window scrolling function and restyle all existing elements.
+ *
+ * @param {event} e - event from input element
+ * @returns {boolean}
+ */
 function parseFileIntoState(e) {
     var files = e.target.files;
     if(files.length === 0){
