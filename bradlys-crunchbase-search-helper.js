@@ -262,10 +262,7 @@ function restyleExistingElements() {
     var elements = document.getElementsByClassName('results container')[0];
     elements = elements.getElementsByTagName('li');
     for (var i = 0; i < elements.length; i++ ) {
-        var name = elements[i].querySelector('a').getAttribute('href');
-        if (name.indexOf('/organization/') !== -1){
-            name = name.substr(14);
-        }
+        var name = elements[i].querySelector('.name').innerHTML.toLowerCase();
         if (name in bradlysCompanies) {
             var style = getStyleForCompany(name);
             if (style.length > 0) {
