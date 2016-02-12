@@ -1,5 +1,5 @@
-# Bradly's CrunchBase Job Search Helper
-Google Chrome Extension for keeping track of companies you've applied to and viewing them on CrunchBase.
+# Bradly's Job Search Helper
+Google Chrome Extension for keeping track of companies you've applied to and viewing them on various websites. Currently only on CrunchBase though.
 
 ## Introduction
 
