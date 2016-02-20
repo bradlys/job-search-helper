@@ -2,7 +2,6 @@
 (function(){
     "use strict";
     let JOB_SEARCH_ON = false;
-    let extensionID = 'fpjgpmkeekbbmabpgpnllgcidkfkpkpn';
     //this is part of the crunchbase implementation. This is my copy of it. It tracks some state.
     var bradlysTrack = {
         lis: $('.results').find('li'),
@@ -26,8 +25,7 @@
      * COMPANY detail is defined as follows:
      * {    name : String,
      *      applied : last date they applied via unix timestamp JS style || false,
-     *      visited : last date they visited via unix timestamp JS style || false,
-     *      interested : number equal -1, 0, 1 with -1 being no state, 0 being not interested, and 1 being interested
+     *      visited : last date they visited via unix timestamp JS style || false
      * }
      */
     let COMPANIES = {};
@@ -61,41 +59,36 @@
         //Parse data into state using the COMPANY detail format
         for (let item of data) {
             if (!('name' in item)) continue; // really need an error here because this is actually invalid data
-            if (item.name in COMPANIES) {
-                if ('action' in item && item.action in COMPANIES[item.name]) {
-                    if ('date' in item) {
-                        COMPANIES[item.name][item.action] = item.date;
-                    }
-                }
-            } else {
-                //new entry
-                addCompanyToCompanies({name: item.name});
-                if ('action' in item && 'date' in item) {
-                    COMPANIES[item.name][item.action] = item.date;
-                }
-            }
+            addCompanyToCompanies(item);
         }
+        restyleExistingElements();
     }
     function addCompanyToCompanies(data){
-        if (!data || data === null || data === undefined) return false;
-        if (!('name' in data)) return false;
+        if (!data || data === null || data === undefined || !('name' in data)) return false;
+        //Make sure the name is lowercase
+        data.name = data.name.toLowerCase();
         let detail = {name: data.name};
         detail.applied = false;
         detail.visited = false;
-        detail.interested = -1;
-        if ('action' in data && 'date' in data) detail[data.action] = data.date;
-        if ('applied' in data) detail.applied = data.applied;
-        if ('visited' in data) detail.visited = data.visited;
-        if ('interested' in data) detail.interested = data.interested;
+        if (data.name in COMPANIES) {
+            detail.applied = COMPANIES[data.name].applied;
+            detail.visited = COMPANIES[data.name].visited;
+        }
+        if ('action' in data && (data.action === 'applied' || data.action === 'visited') && 'date' in data) detail[data.action] = data.date;
+        if ('applied' in data) detail.applied = returnGreaterDate(data.applied, detail.applied);
+        if ('visited' in data) detail.visited = returnGreaterDate(data.visited, detail.visited);
         COMPANIES[data.name] = detail;
         return detail;
     }
-
-    //Stores all the companies as keys and the values are objects with 3 keys.
-    // lastApplied with value of a date object
-    // uninterested with value boolean
-    // lastVisited with value of a date object
-    var bradlysCompanies = {};
+    function returnGreaterDate(date1, date2) {
+        if (date1 === false) {
+            return date2;
+        } else if (date2 === false) {
+            return date1;
+        } else {
+            return date1 > date2 ? date1 : date2;
+        }
+    }
     //add a surrounding div with 'base' class to this.
     //This is the box used for adding a job spreadsheet file.
     var HTMLBox =
@@ -115,10 +108,9 @@
     var resultColors = {
         'appliedRecently' : 'hsla(0, 65%, 70%, 0.5)',
         'appliedLongAgo' : 'hsla(110, 85%, 75%, 0.6)',
-        'visitedRecently' : 'hsla(289, 75%, 35%, 0.8)',
-        'uninterested' : 'hsla(227, 75%, 45%, 0.7)'
+        'visitedRecently' : 'hsla(289, 75%, 35%, 0.8)'
     };
-    var todaysDate = new Date();
+    var CURRENT_TIME = new Date();
 
     var SIXMONTHS = 180*1000*60*60*24;
     var DAYS_45 = 45*60*60*24*1000;
@@ -147,7 +139,6 @@
                 var place = $('.results ul');
                 $(data).each(function (i) {
                     //var vR = visitedRecently(data[i]);
-                    //var un = isUninterested(data[i]);
                     var temp = CB.Autocomplete.template(data[i]).trim();
                     var companyName = data[i].name;
                     var style = getStyleForCompany(companyName);
@@ -214,10 +205,9 @@
         if (!name || name.length < 1){
             return false;
         }
-        var lowerCaseName = name.toLowerCase();
-        if (lowerCaseName in bradlysCompanies) {
-            if ('lastApplied' in bradlysCompanies[lowerCaseName] &&
-                todaysDate - bradlysCompanies[lowerCaseName].lastApplied < SIXMONTHS) {
+        name = name.toLowerCase();
+        if (name in COMPANIES) {
+            if ('applied' in COMPANIES[name] && COMPANIES[name].applied !== false && CURRENT_TIME - COMPANIES[name].applied < SIXMONTHS) {
                 return true;
             }
         }
@@ -234,10 +224,9 @@
         if (!name || name.length < 1){
             return false;
         }
-        var lowerCaseName = name.toLowerCase();
-        if (lowerCaseName in bradlysCompanies) {
-            if ('lastApplied' in bradlysCompanies[lowerCaseName] &&
-                todaysDate - bradlysCompanies[lowerCaseName].lastApplied >= SIXMONTHS) {
+        name = name.toLowerCase();
+        if (name in COMPANIES) {
+            if ('applied' in COMPANIES[name] && COMPANIES[name].applied !== false && CURRENT_TIME - COMPANIES[name].applied >= SIXMONTHS) {
                 return true;
             }
         }
@@ -255,11 +244,10 @@
             return false;
         }
         name = name.toLowerCase();
-        if (name in bradlysCompanies) {
-            if ('lastVisited' in bradlysCompanies[name] && (todaysDate - bradlysCompanies[name].lastVisited) < DAYS_45) {
+        if (name in COMPANIES) {
+            if ('visited' in COMPANIES[name] && COMPANIES[name].visited !== false && CURRENT_TIME - COMPANIES[name].visited < DAYS_45) {
                 return true;
             }
-            //return true;
         }
         return false;
     }
@@ -322,7 +310,7 @@
             var name = elements[i].querySelector('.name').innerHTML.toLowerCase();
             if(JOB_SEARCH_ON) {
                 //if name is in companies then stylize it
-                if (name in bradlysCompanies) {
+                if (name in COMPANIES) {
                     var style = getStyleForCompany(name);
                     if (style.length > 0) {
                         elements[i].setAttribute('style', style);
@@ -407,21 +395,13 @@
                         appliedDate = appliedDate.w;
                         appliedDate = new Date(appliedDate);
                     }
-                    if (companyName in bradlysCompanies && bradlysCompanies[companyName].lastApplied) {
-                        var lastApplied = bradlysCompanies[companyName].lastApplied;
-                        bradlysCompanies[companyName].lastApplied = new Date(Math.max(lastApplied, appliedDate));
-                    } else {
-                        bradlysCompanies[companyName] = {
-                            'lastApplied' : appliedDate,
-                            'uninterested' : false,
-                            'lastVisited' : false
-                        };
-                    }
                     //local storage
                     let detail = {};
                     detail.date = appliedDate;
                     detail.name = companyName;
                     companiesPushToStorage.push(detail);
+                    detail.applied = appliedDate;
+                    addCompanyToCompanies(detail);
                 }
                 //push companies to storage if there are any
                 if (companiesPushToStorage.length > 0) addAppliedToStorage(companiesPushToStorage);
@@ -462,32 +442,30 @@
                         visitedDate = visitedDate.w;
                         visitedDate = new Date(visitedDate);
                     }
-                    if (companyName in bradlysCompanies && bradlysCompanies[companyName].lastVisited) {
-                        var lastVisited = bradlysCompanies[companyName].lastVisited;
-                        bradlysCompanies[companyName].lastVisited = new Date(Math.max(lastVisited, visitedDate));
-                    } else {
-                        bradlysCompanies[companyName] = {
-                            'lastApplied' : false,
-                            'uninterested' : false,
-                            'lastVisited' : visitedDate
-                        };
-                    }
                     //local storage
                     let detail = {};
                     detail.date = visitedDate;
                     detail.name = companyName;
                     companiesPushToStorage.push(detail);
+                    detail.visited = visitedDate;
+                    addCompanyToCompanies(detail);
                 }
                 //push companies to storage if there are any
-                if (companiesPushToStorage.length > 0) addVisitedtoStorage(companiesPushToStorage);
+                if (companiesPushToStorage.length > 0) addVisitedToStorage(companiesPushToStorage);
                 restyleExistingElements();
             };
             fileReader.readAsBinaryString(file);
         }
     }
 
+    function init(){
+        getEverythingFromStorage();
+
+    }
+
     loadDependencyScripts();
     insertFileBox();
     replaceWindowScroll();
+    init();
 
 })();
