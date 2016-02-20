@@ -19,6 +19,17 @@
     };
     //ES5... will die. As will your friends. Good, I can feel your anger. I am defenseless. Take your weapon. Strike me down with all of your hatred and your journey towards the dark side will be complete!
     let PURPOSES = {'EVERYTHING': EverythingEvent, 'storageEvent': storageEvent};
+    /**
+     * Dictionary of companies. Unique name to value.
+     * Each value contains a COMPANY detail which is described below.
+     *
+     * COMPANY detail is defined as follows:
+     * {    name : String,
+     *      applied : last date they applied via unix timestamp JS style || false,
+     *      visited : last date they visited via unix timestamp JS style || false,
+     *      interested : number equal -1, 0, 1 with -1 being no state, 0 being not interested, and 1 being interested
+     * }
+     */
     let COMPANIES = {};
     window.addEventListener('message', function(event){
         if (event.source !== window) return false;
@@ -45,9 +56,39 @@
         window.postMessage({purpose: 'EVERYTHING'}, "*");
     }
     function EverythingEvent(data) {
-        //erase what exists in companies and restart
-        COMPANIES = data;
-        return false;
+        //overwrite state and just get it on
+        COMPANIES = {};
+        //Parse data into state using the COMPANY detail format
+        for (let item of data) {
+            if (!('name' in item)) continue; // really need an error here because this is actually invalid data
+            if (item.name in COMPANIES) {
+                if ('action' in item && item.action in COMPANIES[item.name]) {
+                    if ('date' in item) {
+                        COMPANIES[item.name][item.action] = item.date;
+                    }
+                }
+            } else {
+                //new entry
+                addCompanyToCompanies({name: item.name});
+                if ('action' in item && 'date' in item) {
+                    COMPANIES[item.name][item.action] = item.date;
+                }
+            }
+        }
+    }
+    function addCompanyToCompanies(data){
+        if (!data || data === null || data === undefined) return false;
+        if (!('name' in data)) return false;
+        let detail = {name: data.name};
+        detail.applied = false;
+        detail.visited = false;
+        detail.interested = -1;
+        if ('action' in data && 'date' in data) detail[data.action] = data.date;
+        if ('applied' in data) detail.applied = data.applied;
+        if ('visited' in data) detail.visited = data.visited;
+        if ('interested' in data) detail.interested = data.interested;
+        COMPANIES[data.name] = detail;
+        return detail;
     }
 
     //Stores all the companies as keys and the values are objects with 3 keys.
@@ -122,8 +163,6 @@
             return bradlysTrack.requestMade = true;
         }
     }
-
-    var visited = {};
 
     /**
      * Returns $text where <li style="$text"></li> is the correct style text for the company.
@@ -351,6 +390,8 @@
                         break;
                     }
                 }
+                //companies to push to storage
+                let companiesPushToStorage = [];
                 for (j in worksheet) {
                     if (j === '!ref') {
                         continue;
@@ -376,7 +417,14 @@
                             'lastVisited' : false
                         };
                     }
+                    //local storage
+                    let detail = {};
+                    detail.date = appliedDate;
+                    detail.name = companyName;
+                    companiesPushToStorage.push(detail);
                 }
+                //push companies to storage if there are any
+                if (companiesPushToStorage.length > 0) addAppliedToStorage(companiesPushToStorage);
                 //visited companies sheet
                 worksheet = workbook.Sheets[workbook.SheetNames[1]];
                 companyColumn = 'A';
@@ -398,6 +446,7 @@
                         break;
                     }
                 }
+                companiesPushToStorage = [];
                 for (j in worksheet) {
                     if (j === '!ref') {
                         continue;
@@ -423,7 +472,14 @@
                             'lastVisited' : visitedDate
                         };
                     }
+                    //local storage
+                    let detail = {};
+                    detail.date = visitedDate;
+                    detail.name = companyName;
+                    companiesPushToStorage.push(detail);
                 }
+                //push companies to storage if there are any
+                if (companiesPushToStorage.length > 0) addVisitedtoStorage(companiesPushToStorage);
                 restyleExistingElements();
             };
             fileReader.readAsBinaryString(file);
