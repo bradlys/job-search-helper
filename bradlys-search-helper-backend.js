@@ -13,7 +13,7 @@ if( db.isNew() ) {
 
 window.addEventListener('message', function(event) {
     if (event.source !== window) return false;
-    let PURPOSES = {'EVERYTHING': EVERYTHING, 'addVisited': addVisited, 'addApplied': addApplied};
+    let PURPOSES = {'getCompany': getCompany, 'addVisited': addCompanyDetail, 'addApplied': addCompanyDetail};
     let msg = event.data;
     if (!('purpose' in msg) || !(msg.purpose in PURPOSES)) return false;
     let funcToBeCalled = PURPOSES[msg.purpose];
@@ -24,45 +24,52 @@ window.addEventListener('message', function(event) {
     }
 });
 
-function addVisited(data) {
+let validActions = {'applied' : true, 'visited' : true};
+
+function addCompanyDetail(data) {
+    let pushedCompanies = [];
     for(let item of data) {
         if (!('name' in item) || !('date' in item) || item.name === null || item.date === null) continue;
-        item.action = 'visited';
-        if (db.queryAll('companies', {query: {name: item.name, date: item.date, action: item.action }}).length > 0) continue;
-        db.insert("companies", item);
+        let action = 'visited';
+        let date = Date.now();
+        if ('action' in item) {
+            action = item.action;
+            date = item.date;
+        } else if ('visited' in item) {
+            if (item.visited === false) continue;
+            action = 'visited';
+            date = item.visited;
+        } else if ('applied' in item) {
+            if (item.applied === false) continue;
+            action = 'applied';
+            date = item.applied;
+        }
+        if (typeof(date) !== 'number') {
+            console.log("Invalid date! " + date);
+            continue;
+        }
+        if (typeof(action) !== 'string' || action.length < 1 || !(action in validActions)) {
+            console.log("Invalid action! " + action);
+            continue;
+        }
+        if (typeof(action) !== 'string' || !item.name || item.name.length < 1) {
+            console.log("Invalid name! " + name);
+            continue;
+        }
+        let name = item.name;
+        if (db.queryAll('companies', {query: {name: name, date: date, action: action }}).length > 0) continue;
+        let ID = db.insert("companies", {name: name, date: date, action: action });
+        pushedCompanies.push(db.queryAll('companies', {query: {ID: ID}})[0]);
     }
     db.commit();
+    window.postMessage({purpose: 'returnCompany', data: pushedCompanies}, "*");
 }
 
-function addApplied(data) {
-    for(let item of data) {
-        if (!('name' in item) || !('date' in item) || item.name === null || item.date === null) continue;
-        item.action = 'applied';
-        if (db.queryAll('companies', {query: {name: item.name, date: item.date, action: item.action }}).length > 0) continue;
-        db.insert("companies", item);
+function getCompany(data) {
+    if (!data || !('name' in data) || (data.name.length < 1)) {
+        window.postMessage({purpose: 'returnCompany', data: db.queryAll('companies')}, "*");
+    } else {
+        window.postMessage({purpose: 'returnCompany', data: db.queryAll('companies', {query: {name: data.name}})}, "*");
     }
-    db.commit();
-}
-
-function postStorageEvent(result) {
-    window.postMessage({purpose: 'storageEvent', data: result}, "*");
-}
-
-/**
- * Bradly, bring me everything.
- * What do you mean everything?
- 8 8888888888 `8.`888b           ,8' 8 8888888888   8 888888888o. `8.`8888.      ,8' 8888888 8888888888 8 8888        8  8 8888 b.             8     ,o888888o.
- 8 8888        `8.`888b         ,8'  8 8888         8 8888    `88. `8.`8888.    ,8'        8 8888       8 8888        8  8 8888 888o.          8    8888     `88.
- 8 8888         `8.`888b       ,8'   8 8888         8 8888     `88  `8.`8888.  ,8'         8 8888       8 8888        8  8 8888 Y88888o.       8 ,8 8888       `8.
- 8 8888          `8.`888b     ,8'    8 8888         8 8888     ,88   `8.`8888.,8'          8 8888       8 8888        8  8 8888 .`Y888888o.    8 88 8888
- 8 888888888888   `8.`888b   ,8'     8 888888888888 8 8888.   ,88'    `8.`88888'           8 8888       8 8888        8  8 8888 8o. `Y888888o. 8 88 8888
- 8 8888            `8.`888b ,8'      8 8888         8 888888888P'      `8. 8888            8 8888       8 8888        8  8 8888 8`Y8o. `Y88888o8 88 8888
- 8 8888             `8.`888b8'       8 8888         8 8888`8b           `8 8888            8 8888       8 8888888888888  8 8888 8   `Y8o. `Y8888 88 8888   8888888
- 8 8888              `8.`888'        8 8888         8 8888 `8b.          8 8888            8 8888       8 8888        8  8 8888 8      `Y8o. `Y8 `8 8888       .8'
- 8 8888               `8.`8'         8 8888         8 8888   `8b.        8 8888            8 8888       8 8888        8  8 8888 8         `Y8o.`    8888     ,88'
- 8 888888888888        `8.`          8 888888888888 8 8888     `88.      8 8888            8 8888       8 8888        8  8 8888 8            `Yo     `8888888P'
- */
-function EVERYTHING() {
-    window.postMessage({purpose: 'EVERYTHING', data: db.queryAll('companies')});
 }
 

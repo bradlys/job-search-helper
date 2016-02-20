@@ -17,7 +17,7 @@
         loader: '<div class="loader"><span class="loader-text"></span>Loading....</div>'
     };
     //ES5... will die. As will your friends. Good, I can feel your anger. I am defenseless. Take your weapon. Strike me down with all of your hatred and your journey towards the dark side will be complete!
-    let PURPOSES = {'EVERYTHING': EverythingEvent, 'storageEvent': storageEvent};
+    let PURPOSES = {'returnCompany' : companyStorageEvent, 'storageEvent': storageEvent};
     /**
      * Dictionary of companies. Unique name to value.
      * Each value contains a COMPANY detail which is described below.
@@ -41,9 +41,17 @@
         }
     });
     function addVisitedToStorage(data) {
+        if (!(data instanceof Array)) {
+            console.log ('addVisitedToStorage -> Wrong Data Type for data. \n Data : ' + data);
+            return false;
+        }
         window.postMessage({purpose: 'addVisited', data: data}, "*");
     }
     function addAppliedToStorage(data) {
+        if (!(data instanceof Array)) {
+            console.log ('addAppliedToStorage -> Wrong Data Type for data. \n Data : ' + data);
+            return false;
+        }
         window.postMessage({purpose: 'addApplied', data: data}, "*");
     }
     function storageEvent(data) {
@@ -51,11 +59,9 @@
         return false;
     }
     function getEverythingFromStorage() {
-        window.postMessage({purpose: 'EVERYTHING'}, "*");
+        window.postMessage({purpose: 'getCompany'}, "*");
     }
-    function EverythingEvent(data) {
-        //overwrite state and just get it on
-        COMPANIES = {};
+    function companyStorageEvent(data) {
         //Parse data into state using the COMPANY detail format
         for (let item of data) {
             if (!('name' in item)) continue; // really need an error here because this is actually invalid data
@@ -187,7 +193,7 @@
      */
     window.addToVisited = function addToVisited(name) {
         if (!JOB_SEARCH_ON) return false;
-        addVisitedToStorage({name: name});
+        addVisitedToStorage([{name: name, date: Date.now(), action: 'visited'}]);
     };
 
     window.jobSearchModeToggle = function jobSearchModeToggle(e) {
@@ -393,7 +399,7 @@
                     var appliedDate = worksheet[dateColumn+currentRow];
                     if (appliedDate && 'w' in appliedDate) {
                         appliedDate = appliedDate.w;
-                        appliedDate = new Date(appliedDate);
+                        appliedDate = Date.parse(appliedDate);
                     }
                     //local storage
                     let detail = {};
@@ -440,7 +446,7 @@
                     var visitedDate = worksheet[dateColumn+currentRow];
                     if (visitedDate && 'w' in visitedDate) {
                         visitedDate = visitedDate.w;
-                        visitedDate = new Date(visitedDate);
+                        visitedDate = Date.parse(visitedDate);
                     }
                     //local storage
                     let detail = {};
