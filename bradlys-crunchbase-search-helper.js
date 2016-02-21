@@ -1,9 +1,12 @@
 /*global chrome*/
 (function(){
     "use strict";
+    //global state identifier to know whether job search mode is on for this page
+    //if it is on, then we want to act like this all effects state, ui, and local-storage.
+    //if it is off, then we want the web page to act exactly like it does normally!
     let JOB_SEARCH_ON = false;
     //this is part of the crunchbase implementation. This is my copy of it. It tracks some state.
-    var bradlysTrack = {
+    let bradlysTrack = {
         lis: $('.results').find('li'),
         windowHeight: $(document).outerHeight(),
         currentScroll: $(window).scrollTop(),
@@ -17,7 +20,6 @@
         loader: '<div class="loader"><span class="loader-text"></span>Loading....</div>'
     };
     //ES5... will die. As will your friends. Good, I can feel your anger. I am defenseless. Take your weapon. Strike me down with all of your hatred and your journey towards the dark side will be complete!
-    let PURPOSES = {'returnCompany' : companyStorageEvent, 'storageEvent': storageEvent};
     /**
      * Dictionary of companies. Unique name to value.
      * Each value contains a COMPANY detail which is described below.
@@ -29,6 +31,9 @@
      * }
      */
     let COMPANIES = {};
+    //Valid purposes for the messages being posted and the functions related to the purpose, ignore everything that isn't here
+    let PURPOSES = {'returnCompany' : companyStorageEvent};
+    //Add an event listener to the window and listen for messages to be posted.
     window.addEventListener('message', function(event){
         if (event.source !== window) return false;
         let msg = event.data;
@@ -40,27 +45,32 @@
             funcToBeCalled();
         }
     });
-    function addVisitedToStorage(data) {
+    /**
+     * Add a company(s) to storage. Can be one company or many companies.
+     * @param {Array} data - array of objects like such : {name: {string}, action: {string(applied|visited)}, date: number}
+     * @returns {boolean|undefined}
+     */
+    function addCompanyToStorage(data) {
         if (!(data instanceof Array)) {
-            console.log ('addVisitedToStorage -> Wrong Data Type for data. \n Data : ' + data);
+            console.log ('addCompanyToStorage -> Wrong Data Type for data. \n Data : ' + data);
             return false;
         }
-        window.postMessage({purpose: 'addVisited', data: data}, "*");
+        window.postMessage({purpose: 'addCompany', data: data}, "*");
     }
-    function addAppliedToStorage(data) {
-        if (!(data instanceof Array)) {
-            console.log ('addAppliedToStorage -> Wrong Data Type for data. \n Data : ' + data);
-            return false;
-        }
-        window.postMessage({purpose: 'addApplied', data: data}, "*");
-    }
-    function storageEvent(data) {
-        //update internal state
-        return false;
-    }
+
+    /**
+     * Requests everything from storage.
+     * Everything will be returned via a window.postMessage labeled 'returnCompany' with all company assets.
+     */
     function getEverythingFromStorage() {
         window.postMessage({purpose: 'getCompany'}, "*");
     }
+
+    /**
+     * When a returnCompany event is posted on the window, this function will load the company information into state
+     * and then trigger a redrawing of the existing elements on the page.
+     * @param {Array} data - Array of company name-action-date objects
+     */
     function companyStorageEvent(data) {
         //Parse data into state using the COMPANY detail format
         for (let item of data) {
@@ -69,6 +79,13 @@
         }
         restyleExistingElements();
     }
+
+    /**
+     * Given a company name-action-date object, update the existing Company detail in state or add a new Company
+     * detail using the information provided.
+     * @param {object} data - Company name-action-date object
+     * @returns {object} - Company Detail
+     */
     function addCompanyToCompanies(data){
         if (!data || data === null || data === undefined || !('name' in data)) return false;
         //Make sure the name is lowercase
@@ -86,6 +103,13 @@
         COMPANIES[data.name] = detail;
         return detail;
     }
+
+    /**
+     * Returns the date that is newer. False is always the oldest value.
+     * @param {boolean|number} date1 - false or unix timestamp integer
+     * @param {boolean|number} date2 - false or unix timestamp integer
+     * @returns {boolean|number}
+     */
     function returnGreaterDate(date1, date2) {
         if (date1 === false) {
             return date2;
@@ -193,7 +217,7 @@
      */
     window.addToVisited = function addToVisited(name) {
         if (!JOB_SEARCH_ON) return false;
-        addVisitedToStorage([{name: name, date: Date.now(), action: 'visited'}]);
+        addCompanyToStorage([{name: name, date: Date.now(), action: 'visited'}]);
     };
 
     window.jobSearchModeToggle = function jobSearchModeToggle(e) {
@@ -410,7 +434,7 @@
                     addCompanyToCompanies(detail);
                 }
                 //push companies to storage if there are any
-                if (companiesPushToStorage.length > 0) addAppliedToStorage(companiesPushToStorage);
+                if (companiesPushToStorage.length > 0) addCompanyToStorage(companiesPushToStorage);
                 //visited companies sheet
                 worksheet = workbook.Sheets[workbook.SheetNames[1]];
                 companyColumn = 'A';
@@ -457,7 +481,7 @@
                     addCompanyToCompanies(detail);
                 }
                 //push companies to storage if there are any
-                if (companiesPushToStorage.length > 0) addVisitedToStorage(companiesPushToStorage);
+                if (companiesPushToStorage.length > 0) addCompanyToStorage(companiesPushToStorage);
                 restyleExistingElements();
             };
             fileReader.readAsBinaryString(file);
@@ -466,7 +490,6 @@
 
     function init(){
         getEverythingFromStorage();
-
     }
 
     loadDependencyScripts();
