@@ -357,7 +357,7 @@
 
     /**
      * Take the file given from the file input element and parse it into state. After that's done,
-     * replace the window scrolling function and restyle all existing elements.
+     * restyle all existing elements.
      *
      * @param {event} e - event from input element
      * @returns {boolean}
